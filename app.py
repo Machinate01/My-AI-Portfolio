@@ -18,6 +18,10 @@ st.markdown("""
     div[data-testid="stDataFrame"] { font-size: 1.05rem !important; }
     h3 { padding-top: 1rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem;}
     .stAlert { margin-top: 1rem; }
+    /* Tier Tag Colors */
+    .tier-s-plus { color: #FFD700; font-weight: bold; } /* Gold */
+    .tier-s { color: #C0C0C0; font-weight: bold; }      /* Silver */
+    .tier-a { color: #CD7F32; font-weight: bold; }      /* Bronze */
 </style>
 """, unsafe_allow_html=True)
 
@@ -47,11 +51,11 @@ my_portfolio_data = [
     {"Ticker": "LLY",  "Company": "Eli Lilly and Company", "Avg Cost": 908.8900, "Qty": 0.0856869},
 ]
 
-# 2.2 Watchlist Tickers
+# 2.2 Watchlist Tickers (เพิ่ม WM ตามคำแนะนำ Defensive)
 my_watchlist_tickers = [
     "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
     "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO", "IREN",
-    "RKLB", "UBER", "CDNS"
+    "RKLB", "UBER", "CDNS", "WM" 
 ] 
 
 # PRB Tier Mapping
@@ -63,7 +67,7 @@ prb_tiers = {
     "ISRG": "B+", "PG": "B+", "RKLB": "B+", "TMDX": "B+", "IREN": "B+", "MELI": "B+",
     "ADBE": "B", "UBER": "B", "HOOD": "B", "DASH": "B", "BABA": "B", "CRWV": "B",
     "TTD": "C", "LULU": "C", "CMG": "C", "DUOL": "C", "PDD": "C", "ORCL": "C",
-    "VOO": "ETF", "WBD": "Hold"
+    "VOO": "ETF", "WBD": "Hold", "CDNS": "S" # Added CDNS as S (AI Enabler)
 }
 
 # 2.3 แนวรับ-แนวต้านทางเทคนิค
@@ -86,7 +90,8 @@ tech_levels = {
     "IREN": [50, 60, 38, 35],
     "RKLB": [60, 65, 50, 45],
     "UBER": [95, 100, 82, 78],
-    "CDNS": [320, 330, 290, 280]
+    "CDNS": [320, 330, 290, 280],
+    "WM": [230, 235, 215, 210] # Defensive example
 }
 
 # --- 3. ฟังก์ชันดึงราคา ---
@@ -95,7 +100,7 @@ def get_all_data(portfolio_data, watchlist_tickers):
     port_tickers = [item['Ticker'] for item in portfolio_data]
     all_tickers = list(set(port_tickers + watchlist_tickers))
     
-    # Mock Data
+    # Mock Data for Context
     simulated_prices = {
         "IREN": 40.13, 
         "RKLB": 55.41,
@@ -163,19 +168,21 @@ col_m2.metric("📈 Unrealized Gain", f"${total_gain_usd:,.2f}", f"Invested: ${t
 col_m3.metric("📅 Day Change", f"${total_day_change_usd:+.2f}", f"{(total_day_change_usd/total_invested_usd*100):+.2f}%")
 col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
-# Strategy Note
-with st.expander("🧠 Grand Strategy: The Digital Sniper (Dime Edition)", expanded=True):
+# [NEW] Strategy Analysis based on Article
+with st.expander("🧠 Strategy Tuning: Sniper vs Standard Formula", expanded=True):
     st.markdown("""
-    * **The Identity:** คุณใช้ **Dime** ซึ่งซื้อเศษหุ้นได้ = **ไม่มีข้อจำกัดเรื่องราคาหุ้นต่อหน่วย**
-    * **The Mission:** ใช้เงินสด $400 ล่าได้ทุกตัวที่เข้าโซน ไม่ว่าจะเป็นตัวเล็กหรือตัวใหญ่
-    * **🎯 Target Acquired (Fractional Buy):**
-        * **RKLB:** ธีม Space (รอแนวรับ $50-60)
-        * **UBER:** ธีม Robotaxi (รอแนวรับ $82)
-        * **META/VOO/TSLA:** จากเดิมที่ซื้อไม่ได้ ตอนนี้ถ้าเข้าโซน **Alert** ก็สามารถทยอยสะสมเป็นเศษหุ้นได้ทันที!
+    * **🔍 X-Ray Result:** พอร์ตนี้คือ **"Hyper-Aggressive"** (เสี่ยงกว่าสูตรทั่วไป)
+        * **Safety Net:** ใช้ **Cash 45%** แทน ETF (Index) -> *ข้อดี:* คล่องตัว *ข้อเสีย:* เงินเฟ้อกิน
+        * **Concentration:** ถือ Mag 7/Tech **>40%** (Overweight) -> *เสี่ยง:* ถ้า Tech ร่วงจะเจ็บหนัก
+    * **🛠️ Tuning Recommendation:**
+        1.  **Defense:** เฝ้า **WM** หรือ **V** (A Tier) ใน Watchlist ไว้บ้าง เผื่อวันไหน Tech พักฐาน
+        2.  **Dime Tactic:** แบ่งเงินสด $200 ไว้ **"DCA"** ตัวหลัก (AAPL/TSM) เพื่อสร้างฐาน อีก $200 เก็บไว้ **"Sniper"** (RKLB/IREN)
+        3.  **Mindset:** "ไม่จำเป็นต้องกระจายความเสี่ยง ถ้าคุณติดตามตลาดได้ใกล้ชิดพอ (Sniper Mode)"
     """)
 
 st.markdown("---")
 
+# สร้าง Layout 2 คอลัมน์ (นี่คือบรรทัดที่เคยหายไปครับ!)
 col_main, col_side = st.columns([1.5, 2.5]) 
 
 # --- ส่วนซ้าย: Main Portfolio ---
@@ -246,7 +253,6 @@ with col_side:
             else:
                 signal = "3. ➖ Wait"
         
-        # [UNLOCK] Dime allows fractional shares -> Always affordable
         watchlist_data.append({
             "Tier": prb_tiers.get(t, "-"),
             "Ticker": t,
@@ -256,7 +262,7 @@ with col_side:
             "Dist S1": dist_to_s1/100,
             "รับ 1": levels[2],
             "ต้าน 1": levels[0],
-            "Display Signal": signal.split(". ")[1] # ไม่มี Note ต่อท้ายแล้ว
+            "Display Signal": signal.split(". ")[1] 
         })
     
     df_watch = pd.DataFrame(watchlist_data)
@@ -266,7 +272,6 @@ with col_side:
 
     # Highlight Functions
     def highlight_row(s):
-        # ลบ Logic เช็คเงินพอออก เหลือแค่ Signal
         if "IN ZONE" in s['Signal']:
             return ['background-color: rgba(40, 167, 69, 0.4)'] * len(s)
         elif "ALERT" in s['Signal']:

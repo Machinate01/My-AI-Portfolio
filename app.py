@@ -5,7 +5,7 @@ ad.user_cache_dir = lambda *args: "/tmp"
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta # เพิ่ม timedelta
+from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
 # --- 1. ตั้งค่าหน้าเว็บ ---
@@ -26,7 +26,7 @@ if st.button('🔄 Refresh Data (Real-time)'):
 # --- 2. ข้อมูลพอร์ต (Update: 16 Dec 2025) ---
 start_date_str = "02/10/2025" 
 
-# [TWEAK 1] ปรับเวลาเป็นไทย (UTC+7)
+# ปรับเวลาเป็นไทย (UTC+7)
 now = datetime.utcnow() + timedelta(hours=7) 
 target_date_str = now.strftime("%d %B %Y %H:%M:%S")
 
@@ -90,7 +90,7 @@ total_pct_gain = (total_unrealized_thb / total_cost_thb) * 100 if total_cost_thb
 st.title("🚀 My Portfolio Tracker (Live)")
 st.caption(f"Last Update (BKK Time): {target_date_str}")
 
-# [TWEAK 2] Scorecard: ย้ายสรุปมาไว้ข้างบน
+# Scorecard: ย้ายสรุปมาไว้ข้างบน
 col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 col_m1.metric("💰 Net Worth (THB)", f"฿{total_value_thb:,.0f}", f"Day {invest_days}")
 col_m2.metric("📈 Unrealized Gain", f"฿{total_unrealized_thb:,.0f}", f"{total_pct_gain:+.2f}%")
@@ -128,19 +128,45 @@ display_styled_table(growth_df, "💎 Growth & Innovation")
 
 st.markdown("---")
 
-# [TWEAK 3] Charts: เพิ่ม Bar Chart เทียบ Cost vs Value
+# Charts: ปรับปรุงกราฟแท่ง
 col_c1, col_c2 = st.columns([1, 2])
+
+# กำหนดชุดสีสวยงาม
+colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b'] 
+ticker_colors = {ticker: colors[i % len(colors)] for i, ticker in enumerate(df['Ticker'])}
 
 with col_c1:
     st.subheader("🍰 Allocation")
-    fig_pie = go.Figure(data=[go.Pie(labels=df['Ticker'], values=df['Value USD'], hole=.4)])
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=df['Ticker'], 
+        values=df['Value USD'], 
+        hole=.4,
+        marker_colors=[ticker_colors[t] for t in df['Ticker']]
+    )])
     fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, showlegend=False)
     st.plotly_chart(fig_pie, use_container_width=True)
 
 with col_c2:
-    st.subheader("📊 Performance: Cost vs Value")
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(x=df['Ticker'], y=df['Cost USD'], name='Cost Basis', marker_color='gray'))
-    fig_bar.add_trace(go.Bar(x=df['Ticker'], y=df['Value USD'], name='Current Value', marker_color='#28a745')) # สีเขียว
-    fig_bar.update_layout(barmode='group', margin=dict(t=0, b=0, l=0, r=0), height=300, legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1))
+    st.subheader("📊 Total Gain/Loss by Ticker")
+    
+    # สร้างสีตามกำไร/ขาดทุน
+    bar_colors = ['#28a745' if gain >= 0 else '#dc3545' for gain in df['Total Gain USD']]
+    
+    fig_bar = go.Figure(data=[go.Bar(
+        x=df['Ticker'], 
+        y=df['Total Gain USD'], 
+        name='Total Gain/Loss', 
+        marker_color=bar_colors
+    )]) 
+    
+    # เพิ่มเส้น 0 เพื่อให้เห็นจุด Break-even
+    fig_bar.add_hline(y=0, line_width=1, line_dash="dash", line_color="gray") 
+    
+    fig_bar.update_layout(
+        barmode='group', 
+        margin=dict(t=0, b=0, l=0, r=0), 
+        height=300,
+        xaxis_title="", 
+        yaxis_title="Gain/Loss (USD)"
+    )
     st.plotly_chart(fig_bar, use_container_width=True)

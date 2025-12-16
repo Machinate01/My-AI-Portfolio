@@ -1,4 +1,4 @@
-# --- ส่วนแก้บั๊ก Cache ---
+# --- ส่วนแก้บั๊ก Cache และ Imports ---
 import appdirs as ad
 ad.user_cache_dir = lambda *args: "/tmp"
 
@@ -17,6 +17,7 @@ st.markdown("""
     [data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 700; }
     div[data-testid="stDataFrame"] { font-size: 1.05rem !important; }
     h3 { padding-top: 1rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem;}
+    .stAlert { margin-top: 1rem; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -133,9 +134,18 @@ col_m2.metric("📈 Unrealized Gain", f"${total_gain_usd:,.2f}", f"Invested: ${t
 col_m3.metric("📅 Day Change", f"${total_day_change_usd:+.2f}", f"{(total_day_change_usd/total_invested_usd*100):+.2f}%")
 col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
+# [NEW] AI Strategy Note (แสดงบทวิเคราะห์)
+with st.expander("📝 AI Strategy Note (16 Dec 2025) - คลิกเพื่ออ่าน", expanded=True):
+    st.markdown("""
+    ### 🛡️ X-Ray Portfolio & Sniper Strategy
+    * **Core Strength:** **AAPL (38%)** และ **LLY (10%)** คือเสาหลักที่ช่วยแบกพอร์ตในวันที่ตลาดผันผวน ทั้งสองตัวชนะตลาดได้ด้วยปัจจัยพื้นฐานที่แข็งแกร่ง
+    * **The Opportunity:** **PLTR ($183)** กำลังย่อตัวลงมาใกล้ **Buy Zone ($180)** มากที่สุด เป็นเป้าหมายหลักในการใช้เงินสด
+    * **Cash Management ($400):** * ⚠️ เงินสดมีจำกัด ไม่พอสำหรับซื้อหุ้นใหญ่ที่แจ้งเตือนอย่าง **META ($647)** หรือ **VOO ($625)**
+        * ✅ **คำแนะนำ:** โฟกัสกระสุนไปที่ **PLTR** หรือรอเก็บ **NVDA** ที่แนวรับ **$173** ซึ่งอยู่ในวิสัยที่ซื้อได้
+    """)
+
 st.markdown("---")
 
-# สร้าง Layout 2 คอลัมน์ (นี่คือบรรทัดที่หายไปก่อนหน้านี้)
 col_main, col_side = st.columns([1.5, 2.5]) 
 
 # --- ส่วนซ้าย: Main Portfolio ---
@@ -206,6 +216,10 @@ with col_side:
             else:
                 signal = "3. ➖ Wait"
         
+        # Check Affordability
+        affordable = price <= cash_balance_usd
+        note = "" if affordable else " (🔒 Over Budget)"
+        
         watchlist_data.append({
             "Ticker": t,
             "Price": price,
@@ -213,17 +227,22 @@ with col_side:
             "Signal": signal, 
             "Dist S1": dist_to_s1/100,
             "รับ 1": levels[2],
-            "ต้าน 1": levels[0]
+            "ต้าน 1": levels[0],
+            "Affordable": affordable,
+            "Display Signal": signal.split(". ")[1] + note
         })
     
     df_watch = pd.DataFrame(watchlist_data)
     
     # Sort
     df_watch = df_watch.sort_values(by=["Signal", "Dist S1"], ascending=[True, True])
-    df_watch['Action'] = df_watch['Signal'].apply(lambda x: x.split(". ")[1])
 
     # Highlight Functions
-    def highlight_signal(s):
+    def highlight_row(s):
+        styles = []
+        if not s['Affordable']:
+            return ['background-color: rgba(128, 128, 128, 0.1); color: #aaaaaa;'] * len(s)
+
         if "IN ZONE" in s['Signal']:
             return ['background-color: rgba(40, 167, 69, 0.4)'] * len(s)
         elif "ALERT" in s['Signal']:
@@ -246,17 +265,19 @@ with col_side:
             "รับ 1": "${:.0f}",
             "ต้าน 1": "${:.0f}"
         })
-        .apply(highlight_signal, axis=1)
+        .apply(highlight_row, axis=1)
         .map(color_dist_s1, subset=['Dist S1']),
         column_config={
-            "Action": st.column_config.Column("Status", width="small"), # ย้ายมาซ้ายสุด
+            "Display Signal": st.column_config.Column("Status", width="medium"),
             "Ticker": st.column_config.Column("Symbol", width="small"),
             "Price": st.column_config.Column("Price", width="small"),
             "% Day": st.column_config.Column("% Day", width="small"),
             "Signal": None,
+            "Affordable": None,
             "Dist S1": st.column_config.Column("Diff S1", help="ระยะห่างจากแนวรับไม้แรก"),
             "รับ 1": st.column_config.Column("Buy Lv.1"),
             "ต้าน 1": st.column_config.Column("Sell Lv.1"),
         },
+        column_order=["Display Signal", "Ticker", "Price", "% Day", "Dist S1", "รับ 1", "ต้าน 1"],
         hide_index=True, use_container_width=True
     )

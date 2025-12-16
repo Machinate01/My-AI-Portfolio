@@ -47,7 +47,7 @@ my_portfolio_data = [
     {"Ticker": "LLY",  "Company": "Eli Lilly and Company", "Avg Cost": 908.8900, "Qty": 0.0856869},
 ]
 
-# 2.2 Watchlist Tickers (รวม Mega Trends & Physical AI)
+# 2.2 Watchlist Tickers (คัดเน้นๆ ตามสไตล์ Sniper)
 my_watchlist_tickers = [
     "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
     "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO", "IREN",
@@ -83,7 +83,7 @@ def get_all_data(portfolio_data, watchlist_tickers):
     port_tickers = [item['Ticker'] for item in portfolio_data]
     all_tickers = list(set(port_tickers + watchlist_tickers))
     
-    # Mock Data for Context
+    # Mock Data for Context (Simulation)
     simulated_prices = {
         "IREN": 40.13, 
         "RKLB": 55.41,
@@ -151,14 +151,17 @@ col_m2.metric("📈 Unrealized Gain", f"${total_gain_usd:,.2f}", f"Invested: ${t
 col_m3.metric("📅 Day Change", f"${total_day_change_usd:+.2f}", f"{(total_day_change_usd/total_invested_usd*100):+.2f}%")
 col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
-# [NEW] AI Strategy Note: Digital vs Physical
-with st.expander("📝 AI Strategy: Digital Brain vs Physical Body (2025)", expanded=True):
+# [NEW] Grand Strategy Note
+with st.expander("🧠 Grand Strategy: The Digital Sniper (2025)", expanded=True):
     st.markdown("""
-    ### 🧠 Digital AI vs 🦾 Physical AI
-    * **NVDA (Digital):** "สมองของ AI" ใน Data Center (ความเสี่ยงต่ำกว่า, กำไรมาแล้ว) -> **Wait for Dip ($173)**
-    * **TSLA (Physical):** "ร่างกายของ AI" บนถนน/หุ่นยนต์ (ความเสี่ยงสูงกว่า, กำไรรออนาคต) -> **Wait for Dip ($460)**
-    * **🛡️ Portfolio Status:** เรามี **TSM** ที่เป็นคนผลิตชิปให้ทั้งสองฝั่ง (Hedging) และมี **PLTR** (Software)
-    * **🎯 Sniper Action:** ไม่ต้องเลือกข้าง! ให้ถือเงินสดรอตัวที่ลงมาถึงโซนแนวรับก่อน แล้วค่อยเข้า (โดยเฉพาะ TSLA ที่ต้องระวังเรื่องราคาแพงเกินงบ)
+    * **The Identity:** คุณคือ **Sniper** ที่เน้น High Conviction (ถือตัวเนื้อๆ) + High Cash (รอจังหวะนรก)
+    * **The Portfolio:** แกนหลักคือ **Digital AI (AAPL, TSM, PLTR)** ที่ทำกำไรได้จริงแล้ว = **"Hold to Run"**
+    * **The Mission:** ใช้เงินสด $400 ล่า **Physical AI & Space** (ร่างกาย & อวกาศ)
+    * **🎯 Target Acquired:**
+        * **RKLB ($50-60):** ธีม Space ที่ราคาเข้าถึงได้ (Affordable Growth)
+        * **UBER ($90-100):** ธีม Robotaxi Platform (แทน TSLA ที่แพงเกินงบ)
+        * **IREN ($38):** ธีม Energy Infrastructure (เสี่ยงสูง ลุ้นเด้งแรง)
+    * *Warning:* หลีกเลี่ยงหุ้น >$400 (META, VOO, TSLA) ถ้าไม่ได้ซื้อเศษหุ้น เพราะจะทำให้บริหารพอร์ตยาก
     """)
 
 st.markdown("---")

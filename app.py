@@ -4,10 +4,10 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 
-# --- 1. ตั้งค่าหน้าเว็บ ---
+# --- 1. ตั้งค่าหน้าเว็บ (บรรทัดแรกสุด) ---
 st.set_page_config(page_title="Sniper Portfolio & Watchlist", page_icon="🔭", layout="wide")
 
-# CSS ปรับแต่ง (Big Font Edition 🔍)
+# --- CSS ปรับแต่ง (Big Font Edition 🔍) ---
 st.markdown("""
 <style>
     /* ปรับขนาดฟอนต์พื้นฐาน */
@@ -37,26 +37,31 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. ข้อมูลพอร์ต (User Specific Data) ---
+# --- 2. Sidebar Settings (ปรับเงินสดได้เอง) ---
+with st.sidebar:
+    st.header("💼 Wallet Settings")
+    # ตั้งค่าเริ่มต้นเป็น 400 ตามพอร์ตปัจจุบันของคุณ
+    cash_balance_usd = st.number_input("Cash Flow ($)", value=400.00, step=50.0, format="%.2f")
+    st.info("💡 ใส่จำนวนเงินสดที่มีเพื่อคำนวณพอร์ต")
+
+# --- 3. ข้อมูลพอร์ต (Portfolio Data) ---
 try:
-    start_date_str = "02/10/2025" 
-    cash_balance_usd = 400.00  # คงยอดเงิน $400 ตามขอ
     now = datetime.utcnow() + timedelta(hours=7) 
     target_date_str = now.strftime("%d %B %Y %H:%M:%S")
 
-    # 2.1 พอร์ตหลัก (คงหุ้นเดิมของคุณ)
+    # 3.1 พอร์ตหลัก (ข้อมูลจากสคริปต์ของคุณ)
     my_portfolio_data = [
-        {"Ticker": "AAPL", "Company": "Apple Inc.",             "Avg Cost": 240.2191, "Qty": 0.6695555},
-        {"Ticker": "PLTR", "Company": "Palantir Technologies",  "Avg Cost": 170.1280, "Qty": 0.5868523},
-        {"Ticker": "TSM",  "Company": "Taiwan Semiconductor",   "Avg Cost": 281.3780, "Qty": 0.3548252},
-        {"Ticker": "LLY",  "Company": "Eli Lilly and Company",  "Avg Cost": 908.8900, "Qty": 0.0856869},
+        {"Ticker": "AAPL", "Avg Cost": 240.2191, "Qty": 0.6695555},
+        {"Ticker": "PLTR", "Avg Cost": 170.1280, "Qty": 0.5868523},
+        {"Ticker": "TSM",  "Avg Cost": 281.3780, "Qty": 0.3548252},
+        {"Ticker": "LLY",  "Avg Cost": 908.8900, "Qty": 0.0856869},
     ]
 
-    # 2.2 Watchlist Tickers (รวม Watchlist เดิม + ตัวใหม่)
+    # 3.2 Watchlist Tickers (ข้อมูลจากสคริปต์ของคุณ)
     my_watchlist_tickers = [
         "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
         "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO", "IREN",
-        "RKLB", "UBER", "CDNS", "WM", "SCHD", "CRWD", "MU", "PATH", "QQQM"
+        "RKLB", "UBER", "CDNS", "WM" 
     ] 
 
     # PRB Tier Mapping
@@ -64,22 +69,23 @@ try:
         "NVDA": "S+", "AAPL": "S+", "MSFT": "S+", "GOOGL": "S+", "TSM": "S+", "ASML": "S+",
         "AMD": "S", "PLTR": "S", "AMZN": "S", "META": "S", "AVGO": "S", "CRWD": "S", "SMH": "S", "QQQ": "ETF",
         "TSLA": "A+", "V": "A+", "MA": "A+", "LLY": "A+", "JNJ": "A+", "BRK.B": "A+", "PG": "B+", "KO": "B+",
-        "NFLX": "A", "WM": "A", "WMT": "A", "CEG": "A", "NET": "A", "PANW": "A", "SCHD": "A",
-        "ISRG": "B+", "RKLB": "B+", "TMDX": "B+", "IREN": "B+", "MELI": "B+", "ASTS": "B+", "EOSE": "B+", "CDNS": "S",
+        "NFLX": "A", "WM": "A", "WMT": "A", "CEG": "A", "NET": "A", "PANW": "A", "SCHD": "A", "CDNS": "S",
+        "ISRG": "B+", "RKLB": "B+", "TMDX": "B+", "IREN": "B+", "MELI": "B+", "ASTS": "B+", "EOSE": "B+",
         "ADBE": "B", "UBER": "B", "HOOD": "B", "DASH": "B", "BABA": "B", "CRWV": "B", "MU": "B", "PATH": "C",
         "TTD": "C", "LULU": "C", "CMG": "C", "DUOL": "C", "PDD": "C", "ORCL": "C", "WBD": "Hold",
         "VOO": "ETF", "QQQM": "ETF"
     }
 
-    # รวม Ticker ทั้งหมดเพื่อดึงข้อมูลทีเดียว
+    # รวม Ticker ทั้งหมด
     port_tickers = [item['Ticker'] for item in my_portfolio_data]
     all_tickers = list(set(port_tickers + my_watchlist_tickers))
 
-    # --- 3. ฟังก์ชันดึงราคาและคำนวณ Technical (Yahoo Finance Engine) ---
+    # --- 4. ฟังก์ชันดึงราคาและคำนวณ Technical (Yahoo Finance Engine) ---
     @st.cache_data(ttl=60, show_spinner="Fetching Real-time Market Data...") 
     def get_realtime_data(tickers_list):
         data_dict = {}
         try:
+            # ดึงข้อมูลย้อนหลัง 2 ปีเพื่อความแม่นยำของ EMA200
             df_hist = yf.download(tickers_list, period="2y", group_by='ticker', auto_adjust=True, threads=True)
         except Exception as e:
             st.error(f"Data Fetch Error: {e}")
@@ -112,11 +118,14 @@ try:
                 rs = gain / loss
                 df_t['RSI'] = 100 - (100 / (1 + rs))
 
-                # Sell Levels (Dynamic)
+                # Sell Levels (Dynamic Calculation)
+                # Sell 1: Upper Bollinger Band (20, 2)
                 df_t['SMA20'] = df_t['Close'].rolling(window=20).mean()
                 df_t['STD20'] = df_t['Close'].rolling(window=20).std()
-                sell_r1 = (df_t['SMA20'] + (df_t['STD20'] * 2)).iloc[-1] # Bollinger Upper
-                sell_r2 = df_t['Close'].iloc[-252:].max() # 52W High
+                sell_r1 = (df_t['SMA20'] + (df_t['STD20'] * 2)).iloc[-1] 
+                
+                # Sell 2: 52-Week High
+                sell_r2 = df_t['Close'].iloc[-252:].max()
 
                 data_dict[ticker] = {
                     "Price": current_price, "PrevClose": prev_close,
@@ -134,7 +143,7 @@ try:
 
     market_data = get_realtime_data(all_tickers)
 
-    # --- 4. ประมวลผลข้อมูล (Processing) ---
+    # --- 5. ประมวลผลข้อมูล (Processing) ---
     df = pd.DataFrame(my_portfolio_data)
     
     # Map Data
@@ -145,18 +154,23 @@ try:
     df['Value USD'] = df['Qty'] * df['Current Price']
     df['Total Cost'] = df['Qty'] * df['Avg Cost']
     df['Total Gain USD'] = df['Value USD'] - df['Total Cost']
-    df['%G/L'] = ((df['Current Price'] - df['Avg Cost']) / df['Avg Cost']) 
+    df['% P/L'] = ((df['Current Price'] - df['Avg Cost']) / df['Avg Cost']) # Rename from % G/L
     df['Day Change USD'] = (df['Current Price'] - df['PrevClose']) * df['Qty']
     df['%Day Change'] = ((df['Current Price'] - df['PrevClose']) / df['PrevClose']) if df['PrevClose'].sum() > 0 else 0
 
-    # Tech Levels
+    # Tech Levels & Upside Calculation
     def get_levels_series(ticker, price):
         data = market_data.get(ticker, {})
         buy1 = data.get('EMA50', 0)
         buy2 = data.get('EMA200', 0)
+        sell1 = data.get('Sell1', 0)
+        sell2 = data.get('Sell2', 0)
+        
         diff_s1 = (price - buy1) / buy1 if buy1 > 0 else 0
-        return pd.Series([buy1, buy2, data.get('Sell1', 0), data.get('Sell2', 0), diff_s1], 
-                         index=['Buy Lv.1', 'Buy Lv.2', 'Sell Lv.1', 'Sell Lv.2', 'Diff S1'])
+        upside = (sell1 - price) / price if price > 0 else 0 # New Upside Calc
+        
+        return pd.Series([buy1, buy2, sell1, sell2, diff_s1, upside], 
+                         index=['Buy Lv.1', 'Buy Lv.2', 'Sell Lv.1', 'Sell Lv.2', 'Diff S1', 'Upside'])
 
     tech_cols = df.apply(lambda x: get_levels_series(x['Ticker'], x['Current Price']), axis=1)
     df = pd.concat([df, tech_cols], axis=1)
@@ -166,7 +180,7 @@ try:
     total_day_change = df['Day Change USD'].sum()
     total_invested = df['Total Cost'].sum()
 
-    # --- 5. แสดงผล (UI) ---
+    # --- 6. แสดงผล (UI) ---
     st.title("🔭 Sniper Portfolio & Watchlist") 
     st.caption(f"Last Update (BKK Time): {target_date_str} | Data Source: Yahoo Finance")
 
@@ -275,22 +289,26 @@ try:
         if "A" in str(val): return 'color: #cd7f32; font-weight: bold;' 
         return ''
 
-    # --- LEFT SIDE: Portfolio (รวมเป็นตารางเดียวสำหรับ Sniper Port) ---
+    # --- LEFT SIDE: Portfolio (Clean & Compact) ---
     with col_bot_left:
         st.subheader("🛡️ Main Portfolio Holdings") 
-        df_display = df.copy()
         
         st.dataframe(
-            df_display.style.format({
+            df.style.format({
                 "Qty": "{:.4f}", "Avg Cost": "${:.2f}", "Total Cost": "${:,.2f}", "Current Price": "${:.2f}",
-                "Diff S1": "{:+.1%}", "%G/L": format_arrow, "Value USD": "${:,.2f}", "Total Gain USD": "${:,.2f}",
-                "Buy Lv.1": "${:.0f}", "Buy Lv.2": "${:.0f}", "Sell Lv.1": "${:.0f}", "Sell Lv.2": "${:.0f}"
+                "Diff S1": "{:+.1%}", "% P/L": format_arrow, "Value USD": "${:,.2f}", "Total Gain USD": "${:,.2f}",
+                "Upside": "{:+.1%}", "Buy Lv.1": "${:.0f}", "Sell Lv.1": "${:.0f}"
             })
-            .map(color_text, subset=['%G/L', 'Total Gain USD'])
+            .map(color_text, subset=['% P/L', 'Total Gain USD', 'Upside'])
             .map(color_diff_s1_logic, subset=['Diff S1']),
-            column_order=["Ticker", "Company", "Qty", "Avg Cost", "Total Cost", "%G/L", "Current Price", "Value USD", "Total Gain USD", "Diff S1", "Buy Lv.1", "Buy Lv.2", "Sell Lv.1", "Sell Lv.2"],
+            # Clean Column Order: Hidden Company, Added Upside, Renamed % P/L
+            column_order=["Ticker", "Qty", "Avg Cost", "Current Price", "% P/L", "Value USD", "Total Gain USD", "Upside", "Diff S1", "Buy Lv.1", "Sell Lv.1"],
             column_config={
-                "Current Price": "Price", "%G/L": "% Total", "Value USD": "Value ($)", "Total Gain USD": "Total Gain ($)"
+                "Current Price": "Price", 
+                "% P/L": "% Return", 
+                "Value USD": "Value ($)", 
+                "Total Gain USD": "Gain ($)",
+                "Upside": st.column_config.Column("Upside", help="Gap to Sell Lv.1")
             },
             hide_index=True, use_container_width=True
         )
@@ -311,6 +329,7 @@ try:
             rsi = data.get('RSI', 50)
             
             diff_s1 = (price - buy1)/buy1 if buy1 > 0 else 9.99
+            upside = (sell1 - price)/price if price > 0 else 0
             
             signal = "4. Wait" 
             if diff_s1 < 0 and price > 0: signal = "1. ✅ IN ZONE"
@@ -320,7 +339,7 @@ try:
             
             watchlist_data.append({
                 "Tier": prb_tiers.get(t, "-"), "Ticker": t, "Price": price, "% Day": pct_change, "Signal": signal, 
-                "Diff S1": diff_s1, "RSI": rsi,
+                "Diff S1": diff_s1, "RSI": rsi, "Upside": upside,
                 "Buy Lv.1": data.get('EMA50', 0), "Buy Lv.2": data.get('EMA200', 0), 
                 "Sell Lv.1": data.get('Sell1', 0), "Sell Lv.2": data.get('Sell2', 0),
                 "Display Signal": signal.split(". ")[1] 
@@ -337,13 +356,14 @@ try:
 
         st.dataframe(
             df_watch.style.format({
-                "Price": "${:.2f}", "% Day": format_arrow, "Diff S1": "{:+.1%}", "RSI": "{:.0f}",
+                "Price": "${:.2f}", "% Day": format_arrow, "Diff S1": "{:+.1%}", "RSI": "{:.0f}", "Upside": "{:+.1%}",
                 "Buy Lv.1": "${:.0f}", "Buy Lv.2": "${:.0f}", "Sell Lv.1": "${:.0f}", "Sell Lv.2": "${:.0f}"
             })
             .apply(highlight_row, axis=1)
             .map(color_diff_s1_logic, subset=['Diff S1'])
             .map(color_tier, subset=['Tier'])
-            .map(color_rsi, subset=['RSI']), 
+            .map(color_rsi, subset=['RSI'])
+            .map(color_text, subset=['Upside']), 
             column_config={
                 "Display Signal": st.column_config.Column("Status", width="medium"),
                 "Tier": st.column_config.Column("Tier", width="small"),
@@ -351,13 +371,14 @@ try:
                 "Price": st.column_config.Column("Price", width="small"),
                 "% Day": st.column_config.Column("% Day", width="small"),
                 "Diff S1": st.column_config.Column("Diff S1", help="Distance to EMA 50"),
+                "Upside": st.column_config.Column("Upside", help="Gap to Sell Lv.1"),
                 "RSI": st.column_config.Column("RSI", help="RSI (14)"),
                 "Buy Lv.1": st.column_config.Column("Buy (EMA50)"),
                 "Buy Lv.2": st.column_config.Column("Buy (EMA200)"),
                 "Sell Lv.1": st.column_config.Column("Sell (R1)"),
                 "Sell Lv.2": st.column_config.Column("Sell (R2)"),
             },
-            column_order=["Display Signal", "Tier", "Ticker", "Price", "% Day", "Diff S1", "RSI", "Buy Lv.1", "Buy Lv.2", "Sell Lv.1", "Sell Lv.2"],
+            column_order=["Display Signal", "Tier", "Ticker", "Price", "% Day", "Upside", "Diff S1", "RSI", "Buy Lv.1", "Buy Lv.2", "Sell Lv.1", "Sell Lv.2"],
             hide_index=True, use_container_width=True
         )
 

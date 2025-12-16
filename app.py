@@ -18,8 +18,6 @@ st.markdown("""
     div[data-testid="stDataFrame"] { font-size: 1.05rem !important; }
     h3 { padding-top: 1rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem;}
     .stAlert { margin-top: 1rem; }
-    /* ปรับสี Tier Tag */
-    .tier-tag { padding: 2px 6px; border-radius: 4px; font-weight: bold; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -49,14 +47,14 @@ my_portfolio_data = [
     {"Ticker": "LLY",  "Company": "Eli Lilly and Company", "Avg Cost": 908.8900, "Qty": 0.0856869},
 ]
 
-# 2.2 Watchlist Tickers (คัดเน้นๆ)
+# 2.2 Watchlist Tickers
 my_watchlist_tickers = [
     "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
     "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO", "IREN",
     "RKLB", "UBER", "CDNS"
 ] 
 
-# [NEW] PRB Tier Mapping
+# PRB Tier Mapping
 prb_tiers = {
     "NVDA": "S+", "AAPL": "S+", "MSFT": "S+", "GOOGL": "S+", "TSM": "S+", "ASML": "S+",
     "AMD": "S", "PLTR": "S", "AMZN": "S", "META": "S", "AVGO": "S", "CRWD": "S",
@@ -65,7 +63,7 @@ prb_tiers = {
     "ISRG": "B+", "PG": "B+", "RKLB": "B+", "TMDX": "B+", "IREN": "B+", "MELI": "B+",
     "ADBE": "B", "UBER": "B", "HOOD": "B", "DASH": "B", "BABA": "B", "CRWV": "B",
     "TTD": "C", "LULU": "C", "CMG": "C", "DUOL": "C", "PDD": "C", "ORCL": "C",
-    "VOO": "ETF", "WBD": "Hold" # Custom tiers
+    "VOO": "ETF", "WBD": "Hold"
 }
 
 # 2.3 แนวรับ-แนวต้านทางเทคนิค
@@ -97,7 +95,7 @@ def get_all_data(portfolio_data, watchlist_tickers):
     port_tickers = [item['Ticker'] for item in portfolio_data]
     all_tickers = list(set(port_tickers + watchlist_tickers))
     
-    # Mock Data for Context
+    # Mock Data
     simulated_prices = {
         "IREN": 40.13, 
         "RKLB": 55.41,
@@ -165,17 +163,15 @@ col_m2.metric("📈 Unrealized Gain", f"${total_gain_usd:,.2f}", f"Invested: ${t
 col_m3.metric("📅 Day Change", f"${total_day_change_usd:+.2f}", f"{(total_day_change_usd/total_invested_usd*100):+.2f}%")
 col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
-# [NEW] AI Strategy Note with PRB Tier
-with st.expander("🧠 Strategy Update: PRB Tier List 2025 Analysis", expanded=True):
+# Strategy Note
+with st.expander("🧠 Grand Strategy: The Digital Sniper (Dime Edition)", expanded=True):
     st.markdown("""
-    * **🛡️ Main Port Strength:**
-        * **S+ (God Tier):** AAPL, TSM (ฐานที่มั่นคงที่สุด)
-        * **S (Enabler):** PLTR (เส้นเลือดใหญ่ AI)
-        * **A+ (Quality):** LLY (สุขภาพ Growth ไม่ตายตามเทรนด์)
-    * **🎯 Sniper Targets (Watchlist):**
-        * **B+ (High Quality Growth):** **RKLB, IREN** -> เป้าหมายหลักสำหรับเงินสด $400 (รอจังหวะย่อ)
-        * **B (Growth Risk):** **UBER** -> เป้าหมายรอง (Robotaxi Theme)
-    * **⚠️ Caution:** หุ้น **C Tier** หรือ **Avoid** (เช่น RIVN, GME) ไม่อยู่ในเรดาร์ของเรา ปลอดภัยไว้ก่อน
+    * **The Identity:** คุณใช้ **Dime** ซึ่งซื้อเศษหุ้นได้ = **ไม่มีข้อจำกัดเรื่องราคาหุ้นต่อหน่วย**
+    * **The Mission:** ใช้เงินสด $400 ล่าได้ทุกตัวที่เข้าโซน ไม่ว่าจะเป็นตัวเล็กหรือตัวใหญ่
+    * **🎯 Target Acquired (Fractional Buy):**
+        * **RKLB:** ธีม Space (รอแนวรับ $50-60)
+        * **UBER:** ธีม Robotaxi (รอแนวรับ $82)
+        * **META/VOO/TSLA:** จากเดิมที่ซื้อไม่ได้ ตอนนี้ถ้าเข้าโซน **Alert** ก็สามารถทยอยสะสมเป็นเศษหุ้นได้ทันที!
     """)
 
 st.markdown("---")
@@ -219,9 +215,9 @@ with col_main:
     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=350, showlegend=True)
     st.plotly_chart(fig_pie, use_container_width=True)
 
-# --- ส่วนขวา: Watchlist (Sorted & Reordered) ---
+# --- ส่วนขวา: Watchlist (Sorted, Tiered & UNLOCKED) ---
 with col_side:
-    st.subheader("🎯 Sniper Watchlist (with PRB Tier)")
+    st.subheader("🎯 Sniper Watchlist (Fractional Unlocked)")
     
     watchlist_data = []
     for t in sorted(list(set(my_watchlist_tickers))): 
@@ -250,12 +246,9 @@ with col_side:
             else:
                 signal = "3. ➖ Wait"
         
-        # Check Affordability
-        affordable = price <= cash_balance_usd
-        note = "" if affordable else " (🔒 Over)"
-        
+        # [UNLOCK] Dime allows fractional shares -> Always affordable
         watchlist_data.append({
-            "Tier": prb_tiers.get(t, "-"), # [NEW] เพิ่ม Tier
+            "Tier": prb_tiers.get(t, "-"),
             "Ticker": t,
             "Price": price,
             "% Day": pct_change,
@@ -263,8 +256,7 @@ with col_side:
             "Dist S1": dist_to_s1/100,
             "รับ 1": levels[2],
             "ต้าน 1": levels[0],
-            "Affordable": affordable,
-            "Display Signal": signal.split(". ")[1] + note
+            "Display Signal": signal.split(". ")[1] # ไม่มี Note ต่อท้ายแล้ว
         })
     
     df_watch = pd.DataFrame(watchlist_data)
@@ -274,9 +266,7 @@ with col_side:
 
     # Highlight Functions
     def highlight_row(s):
-        if not s['Affordable']:
-            return ['background-color: rgba(128, 128, 128, 0.1); color: #aaaaaa;'] * len(s)
-
+        # ลบ Logic เช็คเงินพอออก เหลือแค่ Signal
         if "IN ZONE" in s['Signal']:
             return ['background-color: rgba(40, 167, 69, 0.4)'] * len(s)
         elif "ALERT" in s['Signal']:
@@ -290,11 +280,10 @@ with col_side:
         elif 0 <= val <= 0.02: return 'color: #28a745; font-weight: bold;'
         return ''
     
-    # [NEW] Color Tier
     def color_tier(val):
-        if val == "S+": return 'color: #ffd700; font-weight: bold;' # Gold
-        if val == "S": return 'color: #c0c0c0; font-weight: bold;' # Silver
-        if "A" in val: return 'color: #cd7f32; font-weight: bold;' # Bronze
+        if val == "S+": return 'color: #ffd700; font-weight: bold;' 
+        if val == "S": return 'color: #c0c0c0; font-weight: bold;' 
+        if "A" in val: return 'color: #cd7f32; font-weight: bold;' 
         return ''
 
     st.dataframe(
@@ -308,19 +297,18 @@ with col_side:
         })
         .apply(highlight_row, axis=1)
         .map(color_dist_s1, subset=['Dist S1'])
-        .map(color_tier, subset=['Tier']), # ใช้สีกับ Tier
+        .map(color_tier, subset=['Tier']),
         column_config={
             "Display Signal": st.column_config.Column("Status", width="medium"),
-            "Tier": st.column_config.Column("Tier", width="small"), # เพิ่มช่อง Tier
+            "Tier": st.column_config.Column("Tier", width="small"),
             "Ticker": st.column_config.Column("Symbol", width="small"),
             "Price": st.column_config.Column("Price", width="small"),
             "% Day": st.column_config.Column("% Day", width="small"),
             "Signal": None,
-            "Affordable": None,
             "Dist S1": st.column_config.Column("Diff S1", help="ระยะห่างจากแนวรับไม้แรก"),
             "รับ 1": st.column_config.Column("Buy Lv.1"),
             "ต้าน 1": st.column_config.Column("Sell Lv.1"),
         },
-        column_order=["Display Signal", "Tier", "Ticker", "Price", "% Day", "Dist S1", "รับ 1", "ต้าน 1"], # เรียง Tier ไว้หน้า
+        column_order=["Display Signal", "Tier", "Ticker", "Price", "% Day", "Dist S1", "รับ 1", "ต้าน 1"],
         hide_index=True, use_container_width=True
     )

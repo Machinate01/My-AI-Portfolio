@@ -17,6 +17,8 @@ st.markdown("""
     [data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 700; }
     div[data-testid="stDataFrame"] { font-size: 1.05rem !important; }
     h3 { padding-top: 1rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem;}
+    /* ปรับขนาดตัวหนังสือในตาราง Watchlist ให้ใหญ่ขึ้น */
+    .st-emotion-cache-nahz7x .st-emotion-cache-178v6ic { font-size: 1rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -46,13 +48,32 @@ my_portfolio_data = [
     {"Ticker": "LLY",  "Company": "Eli Lilly and Company", "Avg Cost": 908.8900, "Qty": 0.0856869},
 ]
 
-# 2.2 Watchlist (หุ้นเก่าที่ย้ายออกไปเฝ้าระวัง)
-my_watchlist_tickers = ["AMZN", "NVDA", "V", "VOO"]
+# 2.2 Watchlist Tickers (หุ้นเก่าที่ย้ายออก + Magnificent 10)
+# เพิ่ม WBD เข้า Watchlist เพราะถือเป็นตัว Value Play ที่ต้องเฝ้าระวัง
+my_watchlist_tickers = ["AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO"] 
 
-# --- 3. ฟังก์ชันดึงราคา (รวมทั้ง Port และ Watchlist) ---
+# 2.3 แนวรับ-แนวต้านทางเทคนิค (Manual Entry)
+tech_levels = {
+    # Ticker: [R1, R2, S1, S2] (R=รับ, S=ต้าน)
+    "AMZN": [216, 212, 230, 244], 
+    "AAPL": [268, 260, 280, 288], 
+    "GOOGL": [300, 288, 320, 330], 
+    "NVDA": [173, 167, 182, 196], 
+    "META": [640, 632, 675, 700], 
+    "MSFT": [468, 457, 490, 505], 
+    "TSLA": [460, 445, 480, 500],
+    "PLTR": [180, 175, 195, 205],
+    "AMD": [205, 199, 224, 238],
+    "AVGO": [335, 316, 350, 370],
+    # เพิ่ม Tickers ใน Port เข้ามาด้วยเพื่อให้เห็นแนวรับ/ต้านใน Watchlist
+    "TSM": [275, 268, 300, 310], 
+    "LLY": [1000, 980, 1100, 1150],
+    "WBD": [28, 27, 31, 33]
+}
+
+# --- 3. ฟังก์ชันดึงราคา ---
 @st.cache_data(ttl=60, show_spinner="Fetching Market Data...") 
 def get_all_data(portfolio_data, watchlist_tickers):
-    # รวม Ticker ทั้งหมดเพื่อดึงทีเดียว
     port_tickers = [item['Ticker'] for item in portfolio_data]
     all_tickers = list(set(port_tickers + watchlist_tickers))
     
@@ -86,7 +107,7 @@ def get_all_data(portfolio_data, watchlist_tickers):
 # --- 4. ประมวลผล ---
 fetched_prices, prev_closes, exchange_rate = get_all_data(my_portfolio_data, my_watchlist_tickers)
 
-# 4.1 คำนวณพอร์ตหลัก
+# 4.1 คำนวณพอร์ตหลัก (เหมือนเดิม)
 df = pd.DataFrame(my_portfolio_data)
 df['Current Price'] = df['Ticker'].map(fetched_prices)
 df['Prev Close'] = df['Ticker'].map(prev_closes)
@@ -98,24 +119,29 @@ df['Day Change USD'] = (df['Current Price'] - df['Prev Close']) * df['Qty']
 df['%Day Change'] = ((df['Current Price'] - df['Prev Close']) / df['Prev Close'])
 
 total_invested_usd = df['Value USD'].sum()
-total_equity_usd = total_invested_usd + cash_balance_usd # รวมเงินสด
+total_equity_usd = total_invested_usd + cash_balance_usd 
 total_equity_thb = total_equity_usd * exchange_rate
-
 total_gain_usd = df['Total Gain USD'].sum()
 total_day_change_usd = df['Day Change USD'].sum()
 
-# 4.2 เตรียมข้อมูล Watchlist
+# 4.2 เตรียมข้อมูล Watchlist (เพิ่มแนวรับ/ต้าน)
 watchlist_data = []
-for t in my_watchlist_tickers:
+for t in sorted(list(set(my_watchlist_tickers))): # จัดเรียงและกำจัดตัวซ้ำ
     price = fetched_prices.get(t, 0)
     prev = prev_closes.get(t, 0)
     change = price - prev
     pct_change = (change / prev) if prev > 0 else 0
+    
+    levels = tech_levels.get(t, [0, 0, 0, 0]) # [R1, R2, S1, S2]
+    
     watchlist_data.append({
         "Ticker": t,
         "Price": price,
-        "Change": change,
-        "% Change": pct_change
+        "% Change": pct_change,
+        "รับ 1": levels[0],
+        "รับ 2": levels[1],
+        "ต้าน 1": levels[2],
+        "ต้าน 2": levels[3]
     })
 df_watch = pd.DataFrame(watchlist_data)
 
@@ -132,11 +158,11 @@ col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
 st.markdown("---")
 
-col_main, col_side = st.columns([2.5, 1])
+col_main, col_side = st.columns([1.5, 2.5]) # สลับสัดส่วนให้ Watchlist กว้างขึ้นเพื่อแสดงแนวรับ/ต้าน
 
 # --- ส่วนซ้าย: Main Portfolio ---
 with col_main:
-    st.subheader(f"🛡️ Main Holdings (Invested + Cash)")
+    st.subheader(f"🛡️ Main Holdings")
     
     # Format Functions
     def color_text(val):
@@ -149,14 +175,14 @@ with col_main:
         return f"{val:+.2%} {symbol}"
 
     # ตารางหุ้นหลัก
-    display_df = df[['Ticker', 'Qty', 'Avg Cost', 'Current Price', '%Day Change', '%G/L', 'Total Gain USD', 'Value USD']].copy()
-    display_df.columns = ['Ticker', 'Qty', 'Avg Cost', 'Price', '% Day', '% Total', 'Gain ($)', 'Value ($)']
+    display_df = df[['Ticker', 'Qty', 'Avg Cost', 'Current Price', '%Day Change', '%G/L', 'Value USD']].copy()
+    display_df.columns = ['Ticker', 'Qty', 'Avg Cost', 'Price', '% Day', '% Total', 'Value ($)']
     
     st.dataframe(
         display_df.style.format({
             "Qty": "{:.4f}", "Avg Cost": "${:.2f}", "Price": "${:.2f}",
-            "% Day": format_arrow, "% Total": format_arrow, "Gain ($)": "${:+.2f}", "Value ($)": "${:.2f}"
-        }).map(color_text, subset=['% Day', '% Total', 'Gain ($)']),
+            "% Day": format_arrow, "% Total": format_arrow, "Value ($)": "${:,.2f}"
+        }).map(color_text, subset=['% Day', '% Total']),
         hide_index=True, use_container_width=True
     )
     
@@ -164,7 +190,6 @@ with col_main:
     st.caption("Asset Allocation (Including Cash)")
     labels = list(df['Ticker']) + ['CASH 💵']
     values = list(df['Value USD']) + [cash_balance_usd]
-    # สี: AAPL(เทาเข้ม), PLTR(ส้ม), TSM(แดง), LLY(น้ำเงิน), Cash(เขียวเหนี่ยวทรัพย์)
     colors = ['#333333', '#ff7f0e', '#d62728', '#1f77b4', '#2ca02c'] 
     
     fig_pie = go.Figure(data=[go.Pie(
@@ -175,18 +200,38 @@ with col_main:
     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=350, showlegend=True)
     st.plotly_chart(fig_pie, use_container_width=True)
 
-# --- ส่วนขวา: Watchlist ---
+# --- ส่วนขวา: Watchlist (พร้อมแนวรับ/ต้าน) ---
 with col_side:
-    st.subheader("👀 Watchlist")
+    st.subheader("🎯 Technical Watchlist (S/R)")
     
-    if not df_watch.empty:
-        # แสดงเป็นการ์ดเล็กๆ หรือตารางย่อ
-        for index, row in df_watch.iterrows():
-            ticker = row['Ticker']
-            price = row['Price']
-            change = row['Change']
-            pct = row['% Change']
-            color = "green" if change >= 0 else "red"
-            
-            st.metric(label=ticker, value=f"${price:.2f}", delta=f"{pct:+.2%} (${change:+.2f})")
-            st.markdown("---")
+    def highlight_SR(s):
+        """Highlight prices that are near support (green) or resistance (red)"""
+        current_price = s['Price']
+        
+        # Check against Support (R1/R2)
+        if current_price <= s['รับ 1'] * 1.005 and current_price >= s['รับ 1'] * 0.995:
+            return ['background-color: rgba(40, 167, 69, 0.3)'] * len(s) # ใกล้แนวรับ (เขียวอ่อน)
+        
+        # Check against Resistance (S1/S2)
+        elif current_price >= s['ต้าน 1'] * 0.995 and current_price <= s['ต้าน 1'] * 1.005:
+            return ['background-color: rgba(220, 53, 69, 0.3)'] * len(s) # ใกล้แนวต้าน (แดงอ่อน)
+        
+        return [''] * len(s)
+
+    # ตาราง Watchlist
+    st.dataframe(
+        df_watch.style
+        .format({
+            "Price": "${:.2f}",
+            "% Change": format_arrow,
+            "รับ 1": "${:.0f}", "รับ 2": "${:.0f}", 
+            "ต้าน 1": "${:.0f}", "ต้าน 2": "${:.0f}"
+        })
+        .apply(highlight_SR, axis=1), # ไฮไลท์เมื่อใกล้แนวรับ/ต้าน
+        column_config={
+            "Ticker": st.column_config.Column("Ticker", width="small"),
+            "Price": st.column_config.Column("Price", width="small"),
+            "% Change": st.column_config.Column("% Day", width="small"),
+        },
+        hide_index=True, use_container_width=True
+    )

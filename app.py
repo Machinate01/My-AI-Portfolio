@@ -47,12 +47,15 @@ my_portfolio_data = [
     {"Ticker": "LLY",  "Company": "Eli Lilly and Company", "Avg Cost": 908.8900, "Qty": 0.0856869},
 ]
 
-# 2.2 Watchlist Tickers
-my_watchlist_tickers = ["AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO"] 
+# 2.2 Watchlist Tickers (รวม Mega Trends & Physical AI)
+my_watchlist_tickers = [
+    "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
+    "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO", "IREN",
+    "RKLB", "UBER", "CDNS"
+] 
 
 # 2.3 แนวรับ-แนวต้านทางเทคนิค
 tech_levels = {
-    # Ticker: [ต้าน1, ต้าน2, รับ1, รับ2]
     "AMZN": [230, 244, 216, 212], 
     "AAPL": [280, 288, 268, 260], 
     "GOOGL": [320, 330, 300, 288], 
@@ -67,7 +70,11 @@ tech_levels = {
     "LLY": [1100, 1150, 1000, 980],
     "WBD": [31, 33, 28, 27],
     "V": [355, 365, 340, 330], 
-    "VOO": [635, 650, 615, 600]
+    "VOO": [635, 650, 615, 600],
+    "IREN": [50, 60, 38, 35],
+    "RKLB": [60, 65, 50, 45],
+    "UBER": [95, 100, 82, 78],
+    "CDNS": [320, 330, 290, 280]
 }
 
 # --- 3. ฟังก์ชันดึงราคา ---
@@ -76,6 +83,12 @@ def get_all_data(portfolio_data, watchlist_tickers):
     port_tickers = [item['Ticker'] for item in portfolio_data]
     all_tickers = list(set(port_tickers + watchlist_tickers))
     
+    # Mock Data for Context
+    simulated_prices = {
+        "IREN": 40.13, 
+        "RKLB": 55.41,
+    }
+
     try:
         usd_thb_data = yf.Ticker("THB=X").history(period="1d")
         usd_thb = usd_thb_data['Close'].iloc[-1] if not usd_thb_data.empty else 31.50
@@ -86,20 +99,24 @@ def get_all_data(portfolio_data, watchlist_tickers):
     prev_closes = {}
     
     for t in all_tickers:
-        try:
-            hist = yf.Ticker(t).history(period="5d")
-            if not hist.empty:
-                live_prices[t] = hist['Close'].iloc[-1]
-                if len(hist) >= 2:
-                    prev_closes[t] = hist['Close'].iloc[-2]
+        if t in simulated_prices:
+            live_prices[t] = simulated_prices[t]
+            prev_closes[t] = simulated_prices[t] * 1.02
+        else:
+            try:
+                hist = yf.Ticker(t).history(period="5d")
+                if not hist.empty:
+                    live_prices[t] = hist['Close'].iloc[-1]
+                    if len(hist) >= 2:
+                        prev_closes[t] = hist['Close'].iloc[-2]
+                    else:
+                        prev_closes[t] = live_prices[t]
                 else:
-                    prev_closes[t] = live_prices[t]
-            else:
+                    live_prices[t] = 0
+                    prev_closes[t] = 0
+            except:
                 live_prices[t] = 0
                 prev_closes[t] = 0
-        except:
-            live_prices[t] = 0
-            prev_closes[t] = 0
             
     return live_prices, prev_closes, usd_thb
 
@@ -134,14 +151,14 @@ col_m2.metric("📈 Unrealized Gain", f"${total_gain_usd:,.2f}", f"Invested: ${t
 col_m3.metric("📅 Day Change", f"${total_day_change_usd:+.2f}", f"{(total_day_change_usd/total_invested_usd*100):+.2f}%")
 col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
-# [NEW] AI Strategy Note (แสดงบทวิเคราะห์)
-with st.expander("📝 AI Strategy Note (16 Dec 2025) - คลิกเพื่ออ่าน", expanded=True):
+# [NEW] AI Strategy Note: Digital vs Physical
+with st.expander("📝 AI Strategy: Digital Brain vs Physical Body (2025)", expanded=True):
     st.markdown("""
-    ### 🛡️ X-Ray Portfolio & Sniper Strategy
-    * **Core Strength:** **AAPL (38%)** และ **LLY (10%)** คือเสาหลักที่ช่วยแบกพอร์ตในวันที่ตลาดผันผวน ทั้งสองตัวชนะตลาดได้ด้วยปัจจัยพื้นฐานที่แข็งแกร่ง
-    * **The Opportunity:** **PLTR ($183)** กำลังย่อตัวลงมาใกล้ **Buy Zone ($180)** มากที่สุด เป็นเป้าหมายหลักในการใช้เงินสด
-    * **Cash Management ($400):** * ⚠️ เงินสดมีจำกัด ไม่พอสำหรับซื้อหุ้นใหญ่ที่แจ้งเตือนอย่าง **META ($647)** หรือ **VOO ($625)**
-        * ✅ **คำแนะนำ:** โฟกัสกระสุนไปที่ **PLTR** หรือรอเก็บ **NVDA** ที่แนวรับ **$173** ซึ่งอยู่ในวิสัยที่ซื้อได้
+    ### 🧠 Digital AI vs 🦾 Physical AI
+    * **NVDA (Digital):** "สมองของ AI" ใน Data Center (ความเสี่ยงต่ำกว่า, กำไรมาแล้ว) -> **Wait for Dip ($173)**
+    * **TSLA (Physical):** "ร่างกายของ AI" บนถนน/หุ่นยนต์ (ความเสี่ยงสูงกว่า, กำไรรออนาคต) -> **Wait for Dip ($460)**
+    * **🛡️ Portfolio Status:** เรามี **TSM** ที่เป็นคนผลิตชิปให้ทั้งสองฝั่ง (Hedging) และมี **PLTR** (Software)
+    * **🎯 Sniper Action:** ไม่ต้องเลือกข้าง! ให้ถือเงินสดรอตัวที่ลงมาถึงโซนแนวรับก่อน แล้วค่อยเข้า (โดยเฉพาะ TSLA ที่ต้องระวังเรื่องราคาแพงเกินงบ)
     """)
 
 st.markdown("---")
@@ -218,7 +235,7 @@ with col_side:
         
         # Check Affordability
         affordable = price <= cash_balance_usd
-        note = "" if affordable else " (🔒 Over Budget)"
+        note = "" if affordable else " (🔒 Over)"
         
         watchlist_data.append({
             "Ticker": t,
@@ -239,7 +256,6 @@ with col_side:
 
     # Highlight Functions
     def highlight_row(s):
-        styles = []
         if not s['Affordable']:
             return ['background-color: rgba(128, 128, 128, 0.1); color: #aaaaaa;'] * len(s)
 

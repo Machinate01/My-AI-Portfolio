@@ -252,3 +252,24 @@ with col_side:
         },
         hide_index=True, use_container_width=True
     )
+def color_dist_s1(val):
+        """Highlight Dist S1: Red if price is below Support, Green if above/near."""
+        if val < 0:
+            return 'color: #dc3545; font-weight: bold;'  # แดงเมื่อราคาหลุดแนวรับ
+        elif 0 <= val <= 0.02: # 0% ถึง +2%
+            return 'color: #28a745; font-weight: bold;'  # เขียวเมื่อใกล้แนวรับ
+        return ''
+        
+    st.dataframe(
+        df_watch.style
+        .format({
+            "Price": "${:.2f}",
+            "% Day": format_arrow,
+            "Dist S1": "{:+.1%}",
+            "รับ 1": "${:.0f}",
+            "ต้าน 1": "${:.0f}"
+        })
+        .apply(highlight_signal, axis=1)
+        .map(color_dist_s1, subset=['Dist S1']), # <-- เพิ่มบรรทัดนี้
+        column_config={
+            # ... (ส่วนเดิม) ...

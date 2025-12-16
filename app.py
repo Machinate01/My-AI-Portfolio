@@ -34,57 +34,65 @@ st.markdown("""
     div[data-testid="stDataFrame"] { width: 100%; }
     
     .stAlert { margin-top: 1rem; }
+    
+    /* Text Area Font */
+    textarea { font-size: 1.1rem !important; font-family: monospace; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. Initialize Session State (ตั้งค่าเริ่มต้นพอร์ต Sniper) ---
+# --- 2. Initialize Session State (Sniper Default Data) ---
+
+# 2.1 Portfolio Data (AAPL, PLTR, TSM, LLY)
 if 'portfolio' not in st.session_state:
     st.session_state.portfolio = [
-        # Growth Assets
         {"Ticker": "AAPL", "Category": "Growth", "Avg Cost": 240.2191, "Qty": 0.6695555},
         {"Ticker": "PLTR", "Category": "Growth", "Avg Cost": 170.1280, "Qty": 0.5868523},
         {"Ticker": "TSM",  "Category": "Growth", "Avg Cost": 281.3780, "Qty": 0.3548252},
-        # Defensive Assets
         {"Ticker": "LLY",  "Category": "Defensive", "Avg Cost": 908.8900, "Qty": 0.0856869},
     ]
 
+# 2.2 Watchlist Data
 if 'watchlist' not in st.session_state:
     st.session_state.watchlist = [
         "AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", 
         "WBD", "AMD", "AVGO", "IREN", "RKLB", "UBER", "CDNS", "WM"
     ]
 
-# --- 3. Sidebar Settings & Management (เพิ่ม/ลบ หุ้น) ---
+# 2.3 Weekly Note Data
+if 'weekly_note' not in st.session_state:
+    st.session_state.weekly_note = """* **วันอังคาร 16 ธ.ค.: "วัดชีพจรผู้บริโภค"**
+    * **AMZN & V:** ถ้า Retail ต่ำกว่า +0.3% หรือ Nonfarm แย่ = ลบ
+* **วันพุธ 17 ธ.ค.: "ชี้ชะตา AI (ภาค Hardware)"**
+    * **Event:** งบ **Micron (MU)** 🚨 *Highlight*
+    * ถ้า "ดีมานด์ AI ล้น" → **NVDA & TSM** พุ่ง 🚀
+* **วันพฤหัส 18 ธ.ค.: "เงินเฟ้อ & AI (ภาคใช้งาน)"**
+    * **CPI > 3.1%:** เงินเฟ้อมา → Tech (NVDA/AMZN) ร่วงก่อน"""
+
+# --- 3. Sidebar Settings & Management ---
 with st.sidebar:
     st.header("💼 Wallet & Management")
-    # ตั้งค่าเริ่มต้น 400 ตามพอร์ต Sniper
+    # Default Cash for Sniper Port = 400
     cash_balance_usd = st.number_input("Cash Flow ($)", value=400.00, step=10.0, format="%.2f")
     
     st.divider()
     
-    # สร้าง Tab สำหรับการจัดการ
     tab_add, tab_remove = st.tabs(["➕ Add Asset", "🗑️ Remove/Sell"])
     
-    # --- TAB 1: ADD ---
     with tab_add:
         st.subheader("Add to Portfolio")
         with st.form("add_port"):
             p_ticker = st.text_input("Ticker (e.g. MSFT)").upper()
             p_qty = st.number_input("Qty", min_value=0.0001, format="%.4f")
             p_cost = st.number_input("Avg Cost", min_value=0.0, format="%.2f")
-            p_cat = st.selectbox("Category", ["Growth", "Defensive"]) # เลือกหมวดหมู่ได้
-            
+            p_cat = st.selectbox("Category", ["Growth", "Defensive"])
             if st.form_submit_button("Add Position"):
                 if p_ticker:
-                    # เพิ่มเข้าพอร์ต
                     st.session_state.portfolio.append({
                         "Ticker": p_ticker, "Category": p_cat, "Avg Cost": p_cost, "Qty": p_qty
                     })
-                    # ลบออกจาก Watchlist ถ้ามี
                     if p_ticker in st.session_state.watchlist:
                         st.session_state.watchlist.remove(p_ticker)
-                    
-                    st.success(f"Added {p_ticker} to {p_cat}!")
+                    st.success(f"Added {p_ticker}!")
                     st.rerun()
 
         st.subheader("Add to Watchlist")
@@ -96,11 +104,9 @@ with st.sidebar:
                     st.success(f"Added {w_ticker}!")
                     st.rerun()
 
-    # --- TAB 2: REMOVE ---
     with tab_remove:
         st.subheader("Sell / Remove Position")
         current_holdings = [f"{item['Ticker']} ({item['Category']})" for item in st.session_state.portfolio]
-        
         if current_holdings:
             to_remove = st.selectbox("Select Position to Remove", current_holdings)
             if st.button("🗑️ Confirm Remove Position"):
@@ -120,7 +126,7 @@ with st.sidebar:
                 st.warning(f"Removed {w_remove}.")
                 st.rerun()
 
-# --- 4. PRB Tier Mapping (Static) ---
+# --- 4. PRB Tier Mapping ---
 prb_tiers = {
     "NVDA": "S+", "AAPL": "S+", "MSFT": "S+", "GOOGL": "S+", "TSM": "S+", "ASML": "S+",
     "AMD": "S", "PLTR": "S", "AMZN": "S", "META": "S", "AVGO": "S", "CRWD": "S", "SMH": "S", "QQQ": "ETF",
@@ -137,7 +143,6 @@ try:
     now = datetime.utcnow() + timedelta(hours=7) 
     target_date_str = now.strftime("%d %B %Y %H:%M:%S")
 
-    # Prepare lists from Session State
     port_tickers = [item['Ticker'] for item in st.session_state.portfolio]
     watchlist_tickers = st.session_state.watchlist
     all_tickers = list(set(port_tickers + watchlist_tickers))
@@ -313,16 +318,19 @@ try:
                 * **> 70:** **สีแดง** (Overbought / น่าขาย)
                 """)
         
-        with st.expander("📅 Weekly Analysis: 16-18 Dec (Consumer, AI, Inflation)", expanded=True):
-            st.markdown("""
-            * **วันอังคาร 16 ธ.ค.: "วัดชีพจรผู้บริโภค"**
-                * **AMZN & V:** ถ้า Retail ต่ำกว่า +0.3% หรือ Nonfarm แย่ = ลบ
-            * **วันพุธ 17 ธ.ค.: "ชี้ชะตา AI (ภาค Hardware)"**
-                * **Event:** งบ **Micron (MU)** 🚨 *Highlight*
-                * ถ้า "ดีมานด์ AI ล้น" → **NVDA & TSM** พุ่ง 🚀
-            * **วันพฤหัส 18 ธ.ค.: "เงินเฟ้อ & AI (ภาคใช้งาน)"**
-                * **CPI > 3.1%:** เงินเฟ้อมา → Tech (NVDA/AMZN) ร่วงก่อน
-            """)
+        with st.expander("📅 Weekly Analysis & Notes : https://web.facebook.com/chaodoi.diary : ปฏิทินข้อมูลเศรษฐกิจที่สำคัญและการรายงานผลประกอบการที่น่าสนใจในสัปดาห์นี้", expanded=True):
+            tab_view, tab_edit = st.tabs(["👁️ View", "✏️ Edit"])
+            
+            with tab_view:
+                st.markdown(st.session_state.weekly_note)
+            
+            with tab_edit:
+                st.info("คุณสามารถแก้ไข เพิ่ม หรือลบข้อความวิเคราะห์ได้ที่นี่ครับ")
+                new_note = st.text_area("Note Editor:", value=st.session_state.weekly_note, height=250)
+                if st.button("💾 Save Notes"):
+                    st.session_state.weekly_note = new_note
+                    st.success("บันทึกข้อมูลเรียบร้อย!")
+                    st.rerun()
 
     with col_mid_right:
         st.subheader("📊 Asset Allocation (Including Cash)")
@@ -351,9 +359,9 @@ try:
 
     col_bot_left, col_bot_right = st.columns(2) 
 
-    # --- LEFT SIDE: Portfolio (Split Tables) ---
+    # --- LEFT SIDE: Portfolio (Filtered by Category) ---
     with col_bot_left:
-        # 1. Growth Engine
+        # Growth Engine
         st.subheader("🚀 Growth Engine") 
         if not df.empty:
             df_growth = df[df['Category'] == 'Growth'].copy()
@@ -367,7 +375,7 @@ try:
                 .map(color_diff_s1_logic, subset=['Diff S1']),
                 column_order=["Ticker", "Qty", "Avg Cost", "Current Price", "% P/L", "Value USD", "Total Gain USD", "Upside", "Diff S1", "Buy Lv.1", "Sell Lv.1"],
                 column_config={
-                    "Current Price": "Price", "% P/L": "% Return", "Value USD": "Value ($)", "Total Gain USD": "Gain ($)",
+                    "Current Price": "Price", "% P/L": "% Total", "Value USD": "Value ($)", "Total Gain USD": "Total Gain ($)",
                     "Buy Lv.1": "Buy Lv.1", "Sell Lv.1": "Sell Lv.1", "Upside": st.column_config.Column("Upside", help="Gap to Sell Lv.1")
                 },
                 hide_index=True, use_container_width=True
@@ -375,7 +383,7 @@ try:
         else:
             st.info("No Growth stocks.")
 
-        # 2. Defensive Wall
+        # Defensive Wall
         st.subheader("🛡️ Defensive Wall") 
         if not df.empty:
             df_defensive = df[df['Category'] == 'Defensive'].copy()
@@ -389,7 +397,7 @@ try:
                 .map(color_diff_s1_logic, subset=['Diff S1']),
                 column_order=["Ticker", "Qty", "Avg Cost", "Current Price", "% P/L", "Value USD", "Total Gain USD", "Upside", "Diff S1", "Buy Lv.1", "Sell Lv.1"],
                 column_config={
-                    "Current Price": "Price", "% P/L": "% Return", "Value USD": "Value ($)", "Total Gain USD": "Gain ($)",
+                    "Current Price": "Price", "% P/L": "% Total", "Value USD": "Value ($)", "Total Gain USD": "Total Gain ($)",
                     "Buy Lv.1": "Buy Lv.1", "Sell Lv.1": "Sell Lv.1", "Upside": st.column_config.Column("Upside", help="Gap to Sell Lv.1")
                 },
                 hide_index=True, use_container_width=True

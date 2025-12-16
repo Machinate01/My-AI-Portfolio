@@ -1,4 +1,4 @@
-# --- ส่วนแก้บั๊ก Cache ---
+# --- ส่วนแก้บั๊ก Cache และ Imports ---
 import appdirs as ad
 ad.user_cache_dir = lambda *args: "/tmp"
 
@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 # --- 1. ตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="Sniper Portfolio & Watchlist", page_icon="🔭", layout="wide")
 
-# CSS ปรับแต่ง
+# CSS ปรับแต่ง (ขยายตัวหนังสือ + ตาราง)
 st.markdown("""
 <style>
     [data-testid="stMetricValue"] { font-size: 2rem !important; font-weight: 700; }
@@ -49,7 +49,7 @@ my_portfolio_data = [
 # 2.2 Watchlist Tickers
 my_watchlist_tickers = ["AMZN", "NVDA", "V", "VOO", "GOOGL", "META", "MSFT", "TSLA", "PLTR", "AAPL", "TSM", "LLY", "WBD", "AMD", "AVGO"] 
 
-# 2.3 แนวรับ-แนวต้านทางเทคนิค
+# 2.3 แนวรับ-แนวต้านทางเทคนิค (อัปเดต V, VOO ครบ)
 tech_levels = {
     # Ticker: [ต้าน1, ต้าน2, รับ1, รับ2]
     "AMZN": [230, 244, 216, 212], 
@@ -102,7 +102,7 @@ def get_all_data(portfolio_data, watchlist_tickers):
             
     return live_prices, prev_closes, usd_thb
 
-# --- 4. ประมวลผล ---
+# --- 4. ประมวลผลข้อมูล ---
 fetched_prices, prev_closes, exchange_rate = get_all_data(my_portfolio_data, my_watchlist_tickers)
 
 # 4.1 คำนวณพอร์ตหลัก
@@ -135,7 +135,7 @@ col_m4.metric("💱 THB/USD", f"{exchange_rate:.2f}", "Real-time")
 
 st.markdown("---")
 
-# สร้าง Layout 2 คอลัมน์ (นี่คือบรรทัดที่หายไปใน Error ของคุณ)
+# สร้าง Layout 2 คอลัมน์ (ซ้ายเล็ก ขวาใหญ่)
 col_main, col_side = st.columns([1.5, 2.5]) 
 
 # --- ส่วนซ้าย: Main Portfolio ---
@@ -165,6 +165,7 @@ with col_main:
     st.caption("Asset Allocation (Including Cash)")
     labels = list(df['Ticker']) + ['CASH 💵']
     values = list(df['Value USD']) + [cash_balance_usd]
+    # สี: AAPL, PLTR, TSM, LLY, Cash
     colors = ['#333333', '#ff7f0e', '#d62728', '#1f77b4', '#2ca02c'] 
     
     fig_pie = go.Figure(data=[go.Pie(
@@ -175,9 +176,9 @@ with col_main:
     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=350, showlegend=True)
     st.plotly_chart(fig_pie, use_container_width=True)
 
-# --- ส่วนขวา: Watchlist (พร้อมระบบเรียงลำดับ) ---
+# --- ส่วนขวา: Watchlist (Sorted & Highlighted) ---
 with col_side:
-    st.subheader("🎯 Sniper Watchlist (Sorted by Action)")
+    st.subheader("🎯 Sniper Watchlist (Sorted by Signal)")
     
     watchlist_data = []
     for t in sorted(list(set(my_watchlist_tickers))): 
@@ -190,6 +191,7 @@ with col_side:
         s1 = levels[2]
         r1 = levels[0]
         
+        # Sniper Logic: Signal Priority
         signal = "4. Wait" 
         dist_to_s1 = 999.9
         
@@ -197,13 +199,13 @@ with col_side:
             dist_to_s1 = (price - s1) / s1 * 100 
             
             if price <= s1:
-                signal = "1. ✅ IN ZONE"
+                signal = "1. ✅ IN ZONE" # Priority 1
             elif 0 < dist_to_s1 <= 2.0:
-                signal = "2. 🟢 ALERT"
+                signal = "2. 🟢 ALERT"   # Priority 2
             elif price >= r1:
-                signal = "5. 🔴 PROFIT"
+                signal = "5. 🔴 PROFIT"  # Priority Last
             else:
-                signal = "3. ➖ Wait"
+                signal = "3. ➖ Wait"    # Priority 3
         
         watchlist_data.append({
             "Ticker": t,
@@ -217,10 +219,11 @@ with col_side:
     
     df_watch = pd.DataFrame(watchlist_data)
     
-    # เรียงลำดับ: Action มาก่อน
+    # Sort: เอา Action ขึ้นก่อน ตามด้วยระยะห่าง
     df_watch = df_watch.sort_values(by=["Signal", "Dist S1"], ascending=[True, True])
     df_watch['Display Signal'] = df_watch['Signal'].apply(lambda x: x.split(". ")[1])
 
+    # Highlight Functions
     def highlight_signal(s):
         if "IN ZONE" in s['Signal']:
             return ['background-color: rgba(40, 167, 69, 0.4)'] * len(s)
@@ -229,37 +232,15 @@ with col_side:
         elif "PROFIT" in s['Signal']:
             return ['background-color: rgba(220, 53, 69, 0.2)'] * len(s)
         return [''] * len(s)
-
-    st.dataframe(
-        df_watch.style
-        .format({
-            "Price": "${:.2f}",
-            "% Day": format_arrow,
-            "Dist S1": "{:+.1%}",
-            "รับ 1": "${:.0f}",
-            "ต้าน 1": "${:.0f}"
-        })
-        .apply(highlight_signal, axis=1),
-        column_config={
-            "Ticker": st.column_config.Column("Symbol", width="small"),
-            "Price": st.column_config.Column("Price", width="small"),
-            "% Day": st.column_config.Column("% Day", width="small"),
-            "Display Signal": st.column_config.Column("Action", width="small"),
-            "Signal": None,
-            "Dist S1": st.column_config.Column("Diff S1", help="ระยะห่างจากแนวรับไม้แรก"),
-            "รับ 1": st.column_config.Column("Buy Lv.1"),
-            "ต้าน 1": st.column_config.Column("Sell Lv.1"),
-        },
-        hide_index=True, use_container_width=True
-    )
-def color_dist_s1(val):
-        """Highlight Dist S1: Red if price is below Support, Green if above/near."""
+    
+    def color_dist_s1(val):
+        # สีแดงถ้าหลุดแนวรับ (<0), สีเขียวถ้ายังอยู่เหนือแนวรับนิดหน่อย
         if val < 0:
-            return 'color: #dc3545; font-weight: bold;'  # แดงเมื่อราคาหลุดแนวรับ
-        elif 0 <= val <= 0.02: # 0% ถึง +2%
-            return 'color: #28a745; font-weight: bold;'  # เขียวเมื่อใกล้แนวรับ
+            return 'color: #dc3545; font-weight: bold;'
+        elif 0 <= val <= 0.02:
+            return 'color: #28a745; font-weight: bold;'
         return ''
-        
+
     st.dataframe(
         df_watch.style
         .format({
@@ -270,6 +251,16 @@ def color_dist_s1(val):
             "ต้าน 1": "${:.0f}"
         })
         .apply(highlight_signal, axis=1)
-        .map(color_dist_s1, subset=['Dist S1']), # <-- เพิ่มบรรทัดนี้
+        .map(color_dist_s1, subset=['Dist S1']),
         column_config={
-            # ... (ส่วนเดิม) ...
+            "Ticker": st.column_config.Column("Symbol", width="small"),
+            "Price": st.column_config.Column("Price", width="small"),
+            "% Day": st.column_config.Column("% Day", width="small"),
+            "Display Signal": st.column_config.Column("Action", width="small"),
+            "Signal": None, # Hide sorting column
+            "Dist S1": st.column_config.Column("Diff S1", help="ระยะห่างจากแนวรับไม้แรก"),
+            "รับ 1": st.column_config.Column("Buy Lv.1"),
+            "ต้าน 1": st.column_config.Column("Sell Lv.1"),
+        },
+        hide_index=True, use_container_width=True
+    )
